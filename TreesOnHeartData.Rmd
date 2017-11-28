@@ -1,0 +1,164 @@
+---
+title: "Prediction Trees on Heart Data"
+author: "Kim Roth"
+date: "10/16/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(mosaic)
+library(rpart) #where the tree routines are
+library(partykit) #for good tree visualization
+library(sp)
+library(randomForest)
+```
+
+We will use the Heart data from class. You will need to upload the data to the server before loading. 
+Information on the data can be found here http://archive.ics.uci.edu/ml/datasets/heart+Disease
+
+You'll want to look at that infomration while considering models.
+```{r}
+Heart <- read_csv("./Heart.csv")
+head(Heart)
+#getting rid of first column
+Heart=select(Heart, -X1)
+head(Heart)
+#noew making R think the categories represented by numbers are categories, also that character variables are a factor
+Heart=mutate(Heart, Sex=as.factor(Sex), Fbs=as.factor(Fbs), RestECG=as.factor(RestECG), ExAng=as.factor(ExAng), Slope=as.factor(Slope),Ca=as.factor(Ca),ChestPain=as.factor(ChestPain), Thal=as.factor(Thal), AHD=as.factor(AHD))
+head(Heart)
+#removing values without an AHD value for later
+Heart=drop_na(Heart)
+head(Heart)
+```
+In order to be able to test the model and to avoid overfitting we divide the data set into 80% used to make the model (training) and 20% used to test the model(test)
+```{r}
+set.seed(4141975) #This is to make the random sample to not vary so I can write the rest of the document
+n=nrow(Heart)
+testSample=sample.int(n,size=round(.2*n))
+train=Heart[-testSample,]
+test=Heart[testSample,]
+
+```
+
+Now let's try to predict AHD,has heart disease. First let's see how common it is in the data.
+```{r}
+tally(~AHD,data=train, format="proportion")
+```
+So overall about 55% of the cases do not have heart disease. So a do nothing model (null model), would be to predict everyone has heart disease it would be right on the training data about 55% of the time
+
+How about for test?
+```{r}
+tally(~AHD,data=test, format="proportion")
+```
+About 51% of time predicting everyone does not have heart disease will work on the test data. Note we expect these to be different.
+
+Predicting it based on Sex (1 male, 0 female)
+```{r}
+TreeGender=rpart(AHD~Sex, data=train)
+TreeGender
+plot(as.party(TreeGender))
+
+```
+Checking the model. The classification matrix is called the confusion matrix (really)
+```{r}
+#on training data
+predictTrain=predict(TreeGender,train, type="class")
+conf=tally(predictTrain~ train$AHD)
+(sum(diag(conf)))/nrow(train)
+predictTest=predict(TreeGender,test, type="class")
+conf2=tally(predictTest~ test$AHD)
+(sum(diag(conf2)))/nrow(test)
+```
+Right 63% on the trainging data and 56% on the test. Both better than just predicting No.
+
+Can do for quantitative variables as well. Let's try MaxHR-maximum heart rate
+```{r}
+TreeHR=rpart(AHD~MaxHR, data=train, control=rpart.control(maxdepth=1))
+TreeHR
+plot(as.party(TreeHR))
+
+```
+So how did we make that split?
+```{r}
+ggplot(data=train, mapping=aes(x=MaxHR,y=""))+geom_count(aes(color=AHD), position=position_jitter(width=0, height=0.1), alpha=0.5)+ geom_vline(xintercept=147.5)
+```
+Checking the model. The classification matrix is called the confusion matrix (really)
+```{r}
+#on training data
+predictTrain=predict(TreeHR,train, type="class")
+conf=tally(predictTrain~ train$AHD)
+(sum(diag(conf)))/nrow(train)
+predictTest=predict(TreeHR,test, type="class")
+conf2=tally(predictTest~ test$AHD)
+(sum(diag(conf2)))/nrow(test)
+```
+This is even better.
+
+Best tree overall
+```{r}
+TreeO=rpart(AHD~., data=train) #the . tells R to use all the other variables
+TreeO
+plot(as.party(TreeO))
+```
+
+Checking the model. 
+```{r}
+#on training data
+predictTrain=predict(TreeO,train, type="class")
+conf=tally(predictTrain~ train$AHD)
+(sum(diag(conf)))/nrow(train)
+#On testing data
+predictTest=predict(TreeO,test, type="class")
+conf2=tally(predictTest~ test$AHD)
+(sum(diag(conf2)))/nrow(test)
+```
+Even better. Now let's talk a little on the board about how R picks variables. Note the default purity measure in R is Gini Index in Weka it's infomation gain (also called cross entropy)
+If you want information. Tree is similar but not the same.
+```{r}
+TreeOI=rpart(AHD~., data=train, parms=list(split="information")) #the . tells R to use all the other variables
+TreeOI
+plot(as.party(TreeOI))
+```
+A test case
+```{r}
+Heart[17,]
+```
+
+Checking the model. 
+```{r}
+#on training data
+predictTrain=predict(TreeOI,train, type="class")
+conf=tally(predictTrain~ train$AHD)
+(sum(diag(conf)))/nrow(train)
+#On testing data
+predictTest=predict(TreeOI,test, type="class")
+conf2=tally(predictTest~ test$AHD)
+(sum(diag(conf2)))/nrow(test)
+```
+Random forest. 
+```{r}
+forest=randomForest(AHD~.,data=train, ntree=200,mtry=4)
+forest
+```
+```{r}
+(110+83)/(110+20+25+83)
+```
+Classifies nicely on test. How about on training.
+```{r}
+predTest=predict(forest,test,type="class")
+confFor=tally(predTest~ test$AHD)
+confFor
+(sum(diag(confFor)))/nrow(test)
+```
+
+Which variables are best? The ones that have the highest decrease in Gini. 
+```{r}
+import=importance(forest) #this gives importance. The rest is getting to display in decreasing order
+import
+import=as.data.frame(import)
+import=rownames_to_column(import)
+import
+arrange(import,desc(MeanDecreaseGini))
+```
+Thal, Ca, ChestPain, MaxHR and Age were in the overall best model making one tree. Oldpeak is not.

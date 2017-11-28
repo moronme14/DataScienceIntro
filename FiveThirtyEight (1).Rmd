@@ -1,0 +1,51 @@
+Megan Moroney
+Anna Kauffman
+---
+title: "FiveThirtyEight Project"
+author: "Megan"
+date: "9/7/2017"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(fivethirtyeight)
+```
+```{r}
+head(US_births_2000_2014)
+str(US_births_2000_2014)
+```
+```{r}
+US_births_2000_2014->US_births
+```
+```{r}
+ggplot(data = US_births, mapping = aes(x=births)) + 
+  geom_histogram(fill="purple", color="black")+ggtitle("Number of U.S. Births")
+```
+Description
+This histogram is a cartesian coordinate system that uses a numeric scale. It shows the number of biths in the U.S with a binwidth of 30. The x axis represents the groups or intervals of births with the scale starting at 5000 to over 15000 and the y axis represents the count or frequency of those births with the scale starting at 0 and going above 600. The distribution is basically two normal distrubitions side by side. The majority of the values fall between bins 7000 and 10000 and 12000 and 15000. The glyph in this graph is the rectangular bars.
+
+
+```{r}
+ggplot(data = US_births, mapping = aes(x = date_of_month, y = births)) +geom_point()+ggtitle("Number of Births on each Day of the Month")+xlab("Day of the Month")+ylab("Number of Births")
+```
+Description
+This scatter plot is a cartesian coordinate system with circles/dots as the glyphs. It is also a numeric scale. The x axis represents the 31 days of the month by number (1-31). The y axis represents the number of births on those days of the month. There is a break in the graph around 10,000 births, which would be interesting to look further into. The bottom half of the graph ranges from about 6000 births to 10,000. The top half of the graph ranges from just above 10,000 to about 15000. 
+
+
+```{r}
+ggplot(data = US_births, mapping = aes(x = date_of_month, y = births)) +geom_point(mapping = aes(color=day_of_week))+ggtitle("Number of Births on each Day of the Month")+xlab("Day of the Month")+ylab("Number of Births")
+```
+Description
+This scatter plot is a cartesian coordinate system with circles/dots as the glyphs. It is also a numeric scale. The x axis represents the 31 days of the month by number (1-31). The y axis represents the number of births on those days of the month. There is a break in the graph around 10,000 births, which would be interesting to look further into. The bottom half of the graph ranges from about 6000 births to 10,000. The top half of the graph ranges from just above 10,000 to about 15000. The color in this graph represents day of the week. The bottom half of the data which is fewer numbers of births appears to be predominantly Saturday and Sunday. The top half of the graph which is the higher number of births is filled with business days, or non weekend days. Again, this would be something interesting to look further into. The U.S. births dataset sheds light on whether or not people are afraid to have babies on Friday the 13th of any month. While our graph shows fewer births on the 13th, the colors indicate no irregularities on that day in comparison to the other days of the month. 
+
+
+```{r}
+US_births$datecat=as.factor(US_births$date_of_month)
+ggplot(data = US_births, mapping = aes(x=day_of_week, fill=datecat)) + 
+  geom_bar()+ggtitle("The Friday the 13th Effect")
+```
+Description
+This graph is similar to the graph of our dataset in the article we found. This is showing day of the week colored by day of the month. Our goal was to show any differences on Friday vs other days of the week. Our graph is very uniform across all days of the week even with days of the month. The majority of the colors show that the 25-31, 15-21, and 3-7 are the most common days of the month. There are no irregularities on Friday's in this graph.
+
+
+
